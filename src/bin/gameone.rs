@@ -34,7 +34,7 @@ struct Crab;
 #[derive(Component, Deref, DerefMut)]
 struct Velocity(Vec2);
 
-fn setup(mut commands: Commands){
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>){
     // make the game camera
     commands.spawn(Camera2dBundle::default());
 
@@ -56,6 +56,7 @@ fn setup(mut commands: Commands){
         );
 
     // spawn the crab
+    let crab_texture = asset_server.load("textures\\rustacean-flat-happy.png");
     commands.spawn(
         (SpriteBundle{
             transform: Transform{
@@ -63,10 +64,11 @@ fn setup(mut commands: Commands){
                 ..default()
             },
             sprite: Sprite {
-                color: CRAB_COLOR,
+                //color: CRAB_COLOR,
                 custom_size: Some(CRAB_SIZE),
                 ..default()
             },
+            texture: crab_texture,
             ..default()
         },
          Crab,
