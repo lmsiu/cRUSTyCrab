@@ -1,21 +1,22 @@
 use bevy::prelude::*;
+use bevy_rapier2d::prelude::*;
 use bevy::window::{Window, WindowResolution, WindowPlugin};
-
-#[derive(Component)]
-struct Collider;
 
 #[derive(Bundle)]
 struct FloorBundle {
     sprite_bundle:SpriteBundle,
     tiling:ImageScaleMode,
-    collider:Collider,
 }
+
+#[derive(Component)]
+struct Player(i32);
 
 impl FloorBundle {
     fn new(m_texture:Handle<Image>) -> FloorBundle {
         FloorBundle {
             sprite_bundle: SpriteBundle {
                 texture: m_texture,
+                transform: Transform::from_xyz(0.,-268.,0.),
                 sprite: Sprite {
                     custom_size:Some(Vec2::new(800.,64.)),
                     ..default()
@@ -27,7 +28,6 @@ impl FloorBundle {
                 tile_y: true,
                 stretch_value: 1.,
             },
-            collider: Collider,
         }
     }
 }
@@ -43,17 +43,42 @@ pub fn get_autorunner_game() {
             }),
             ..Default::default()
         }))
+        .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0)) // Physics plugin
+        .add_plugins(RapierDebugRenderPlugin::default()) // Debug plugin
         .add_systems(Startup, setup)
+        .add_systems(Update, controls)
         .run();
 }
 
 fn setup(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
     asset_server:Res<AssetServer>,
 ) {
     commands.spawn(Camera2dBundle::default());
-    commands.spawn(FloorBundle::new(asset_server.load("m_brick.png")));
+    // floor
+    commands.spawn(FloorBundle::new(asset_server.load("m_brick.png")))
+        .insert(Collider::cuboid(400.,32.));
+    
+    // player
+    commands.spawn(RigidBody::Dynamic)
+        .insert(Collider::ball(10.0))
+        .insert(KinematicCharacterController::default())
+        .insert(TransformBundle::from(Transform::from_xyz(0.0, 400.0, 0.0)))
+        .insert(SpriteBundle {
+            texture: asset_server.load("m_brick.png"),
+            ..Default::default()
+        })
+        .insert(GravityScale(5.0))
+        .insert(Velocity {
+            linvel:Vec2::new(0.,0.),
+            ..Default::default()
+        })
+        .insert(Player(0));
+}
 
+fn controls(input:Res<ButtonInput<KeyCode>>, time:Res<Time>,mut query:Query<(&mut Velocity, &mut Player)>) {
+    let (mut player, whatever)= query.single_mut();
+    if input.just_pressed(KeyCode::Space) {
+        player.linvel = Vec2::new(0., 300.);
+    }
 }
