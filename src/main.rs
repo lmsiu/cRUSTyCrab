@@ -72,11 +72,12 @@ fn main() {
         .add_systems(
             Update,
             (
-                spawn_projectile.run_if(on_timer(Duration::from_millis(650))),
+                spawn_projectile.run_if(on_timer(Duration::from_millis(500))),
             )
         )
         .add_systems(Update, update_player)
         .add_systems(Update, resize_notificator)
+        .add_systems(Update, (update_health_text, update_score_text))
         //.add_systems(Update, update_projectiles)
         .run();
 }
@@ -122,12 +123,30 @@ fn check_collision(pos1: Vec2, size1: Vec2, pos2: Vec2, size2: Vec2) -> bool {
         return false;
     }
 
+    println!("collide! {} {}", pos1, pos2); 
     // If they are neither, then they must be colliding.
     return true;
 }
 
 static mut player_health: i32 = 3;
 static mut player_score: i32 = 0;
+
+fn update_health_text(mut query: Query<&mut Text, With<HealthText>>,) {
+    for mut text in &mut query {
+        unsafe {
+            text.sections[0].value = format!("Health: {player_health:.2}");
+        }
+        
+    }
+}
+fn update_score_text(mut query: Query<&mut Text, With<ScoreText>>,) {
+    for mut text in &mut query {
+        unsafe {
+            text.sections[0].value = format!("Score: {player_score:.2}");
+        }
+        
+    }
+}
 
 fn spawn_projectile(mut commands: Commands, texture_assets: Res<TextureAssets>,) {
     let index = rand::thread_rng().gen_range(0..texture_assets.textures.len());
@@ -148,7 +167,7 @@ fn spawn_projectile(mut commands: Commands, texture_assets: Res<TextureAssets>,)
                 custom_size: Some(size),
                 ..default()
             },
-            transform: Transform::from_xyz(x, y, 0.0),
+            transform: Transform::from_xyz(x, y, 2.0),
             //transform: Transform::from_scale(Vec3::splat(0.5)),
             texture: texture_assets.textures[index].clone_weak(),
             ..default()
@@ -190,8 +209,7 @@ fn update_player(
             let right_bound;
             unsafe {
                 if player_health <= 0 {
-                    transform.rotation = Quat::from_rotation_z(std::f32::consts::PI)    ; // Rotate 180 degrees;
-                    println!("flipped");
+                    transform.rotation = Quat::from_rotation_z(std::f32::consts::PI); // Rotate 180 degrees;
                     return;
                 }
                 transform.translation.y = -HEIGHT/2.0 + PLAYER_SIZE.y;
@@ -248,7 +266,6 @@ fn update_player(
             // CHECK COLLISION TO PLAYER 
             let projectile_pos = Vec2::new(transform.translation.x, transform.translation.y);
             if check_collision(player_pos, PLAYER_SIZE, projectile_pos, projectile.size) {
-                println!("collide!");
                 unsafe {
                     if projectile.good {
                         player_score+=1;
@@ -258,8 +275,7 @@ fn update_player(
                 }
                 commands.entity(entity).despawn();
             }
-
-            if transform.translation.y + projectile.size.y/2.0 <= -screen_height/2.0 { // if the top of the projectile is below the bottom of the screen
+            else if transform.translation.y + projectile.size.y/2.0 <= -screen_height/2.0 { // if the top of the projectile is below the bottom of the screen
                 commands.entity(entity).despawn();
             }
         }
@@ -276,9 +292,15 @@ struct Projectile {
 
 #[derive(Component)]
 struct Player {
-    current: u32,
-    max: u32,
+    wtf: u32,
 }
+
+#[derive(Component)]
+struct HealthText;
+
+#[derive(Component)]
+struct ScoreText;
+
 
 
 fn setup( mut commands: Commands, asset_server: Res<AssetServer>, mut texture_assets: ResMut<TextureAssets>, mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>> ) {
@@ -295,6 +317,7 @@ fn setup( mut commands: Commands, asset_server: Res<AssetServer>, mut texture_as
     commands.spawn(Camera2dBundle::default());
     commands.spawn(SpriteBundle {
         texture: background_image,
+        transform: Transform::from_xyz(0.0, 0.0, 0.0),
         ..default()
     });
     commands.spawn((
@@ -304,7 +327,7 @@ fn setup( mut commands: Commands, asset_server: Res<AssetServer>, mut texture_as
                 custom_size: Some(PLAYER_SIZE),
                 ..default()
             },
-            transform: Transform::from_xyz(0.0, -720.0/2.0 + PLAYER_SIZE.y, 0.0),
+            transform: Transform::from_xyz(0.0, -720.0/2.0 + PLAYER_SIZE.y, 1.0),
             texture,
             ..default()
         },
@@ -315,9 +338,46 @@ fn setup( mut commands: Commands, asset_server: Res<AssetServer>, mut texture_as
         animation_indices,
         AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
         Player {
-            current: 15,
-            max: 35,
+            wtf: 0 
         },
+    ));
+    commands.spawn((
+        // Create a TextBundle that has a Text with a single section.
+        TextBundle::from_section(
+            "Health: 3",
+            TextStyle {
+                font_size: 30.0,
+                ..default()
+            },
+        ) // Set the justification of the Text
+        .with_text_justify(JustifyText::Center)
+        // Set the style of the TextBundle itself.
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(30.0),
+            left: Val::Px(30.0),
+            ..default()
+        }),
+        HealthText,
+    ));
+    commands.spawn((
+        // Create a TextBundle that has a Text with a single section.
+        TextBundle::from_section(
+            "Score: 0",
+            TextStyle {
+                font_size: 30.0,
+                ..default()
+            },
+        ) // Set the justification of the Text
+        .with_text_justify(JustifyText::Center)
+        // Set the style of the TextBundle itself.
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(30.0),
+            right: Val::Px(30.0),
+            ..default()
+        }),
+        ScoreText,
     ));
     /*commands.spawn((
         SpriteBundle {
