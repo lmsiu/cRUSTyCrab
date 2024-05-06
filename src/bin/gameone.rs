@@ -288,8 +288,8 @@ fn check_all_crab_collisions(
         for(transform, other) in &paddle_query{
             let x_min: f32 = transform.translation.x - (PADDLE_SIZE.x/2.0);
             let x_max: f32 = transform.translation.x + (PADDLE_SIZE.x/2.0);
-            let y_min: f32 = transform.translation.y - (PADDLE_SIZE.y+ CRAB_SIZE.y) * 0.5;
-            let y_max: f32 = transform.translation.y + (PADDLE_SIZE.y+CRAB_SIZE.y) * 0.5;
+            let y_min: f32 = transform.translation.y - (PADDLE_SIZE.y + CRAB_SIZE.y) * 0.5;
+            let y_max: f32 = transform.translation.y + (PADDLE_SIZE.y + CRAB_SIZE.y) * 0.5;
 
             let translation: Vec3 = crab_transform.translation;
 
