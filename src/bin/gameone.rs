@@ -5,7 +5,7 @@ use  bevy::math::bounding::{IntersectsVolume};
 // Constant Variables
 
 // Paddle Variables
-const PADDLE_START_Y: f32 = 0.0;
+const PADDLE_START_Y: f32 = BOTTOM_WALL + 60.0;
 const PADDLE_SIZE: Vec2 = Vec2::new(120.0, 20.0);
 const PADDLE_COLOR: Color = Color::rgb(0.3, 0.3, 0.7);
 const PADDLE_SPEED: f32 = 500.0;
@@ -15,6 +15,7 @@ const CRAB_STARTING_POSITION: Vec3 = Vec3::new(0.0, -50.0, 1.0);
 const CRAB_SIZE: Vec2 = Vec2::new(30.0, 30.0);
 const CRAB_SPEED: f32 = 400.0;
 const CRAB_INITIAL_DIRECTION: Vec2 = Vec2::new(0.5, -0.5);
+const MAX_CRAB_SPEED: f32 = 600.0;
 
 // Box for the game
 const LEFT_WALL: f32 = -450.0;
@@ -295,7 +296,15 @@ fn check_all_crab_collisions(
 
             if (translation.x >= x_min && translation.x <= x_max) {
                 if (translation.y >= y_min && translation.y <= y_max) {
-                    crab_velocity.y *= -1.;
+                     //increase speed by 15%
+                    if(crab_velocity.y.abs() < MAX_CRAB_SPEED){
+                        crab_velocity.y *= -1.15;
+                    }else{
+                        crab_velocity.y *= -1.;
+
+                    }
+                    println!("{}" , crab_velocity.y);
+
                     score.score += 1;
                 }
             }
