@@ -4,7 +4,8 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest())) // prevents blurry sprites
         .add_systems(Startup, setup)
-        .add_systems(Update, animate_sprite)
+        .add_systems(Update, update_player)
+        //.add_systems(Update, update_projectiles)
         .run();
 }
 
@@ -17,22 +18,190 @@ struct AnimationIndices {
 #[derive(Component, Deref, DerefMut)]
 struct AnimationTimer(Timer);
 
-fn animate_sprite(
+/*fn hit_detection(
+    mut commands: Commands,
+    enemy_query: Query<(Entity, &Transform, Enemy)>,
+    bullet_query: Query<&Transform, With<Bullet>>
+) {
+    for (entity, enemy_transform) in enemy_query.iter() {
+        for bullet_transform in bullet_query.iter() {
+            // Your collision check
+            if ... {
+                commands.entity(entity).despawn();
+            }
+        }
+    }
+}*/
+
+/*
+fn update_projectiles(time: Res<Time>,
+    input: Res<ButtonInput<KeyCode>>,
+    mut query: Query<
+        (
+            &mut Transform,
+            &Sprite,
+            &Projectile,
+        ),
+    >,
+) {
+    for (mut transform, sprite, projectile) in &mut query {
+        if input.pressed(KeyCode::KeyW) {
+            transform.translation.y -= 350.0 * time.delta_seconds();
+        }
+        if input.pressed(KeyCode::KeyS) {
+            transform.translation.y += 350.0 * time.delta_seconds();
+        }
+        if input.pressed(KeyCode::KeyD) {
+            transform.translation.x -= 350.0 * time.delta_seconds();
+        }
+        if input.pressed(KeyCode::KeyA) {
+            transform.translation.x += 350.0 * time.delta_seconds();
+        }
+    }
+}*/
+
+fn update_player(
+    mut commands: Commands,
     time: Res<Time>,
     input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut TextureAtlas, &mut Transform, &Sprite)>,
+    mut query: Query<
+        (
+            Option<&Player>,
+            Option<&Projectile>,
+
+            Option<&AnimationIndices>, 
+            Option<&mut AnimationTimer>, 
+            Option<&mut TextureAtlas>,
+            
+            &mut Transform,
+            &Sprite,
+        ),
+    >,
+    /*mut projectile_query: Query<
+        (
+            Entity,
+            //&mut Transform,
+            &Sprite,
+            &Projectile,
+        ),
+    >,*/
 ) {
+    for (player, projectile, indices, mut timer, mut atlas, mut transform, sprite,
+    ) in &mut query
+    {
+        if let (Some(player), Some(indices), Some(mut timer), Some(mut atlas)) = (player, indices, timer.as_mut(), atlas.as_mut())   // if this is a PLAYER
+        {
+// ======= FERRIS WALKING CODE ========
+            let old_x = transform.translation.x;
+            let old_y = transform.translation.y;
+            if input.pressed(KeyCode::KeyW) {
+                transform.translation.y += 350.0 * time.delta_seconds();
+            }
+            if input.pressed(KeyCode::KeyS) {
+                transform.translation.y -= 350.0 * time.delta_seconds();
+            }
+            if input.pressed(KeyCode::KeyD) {
+                transform.translation.x += 350.0 * time.delta_seconds();
+            }
+            if input.pressed(KeyCode::KeyA) {
+                transform.translation.x -= 350.0 * time.delta_seconds();
+            }
+            if old_x != transform.translation.x || old_y != transform.translation.y {
+                timer.tick(time.delta());
+                if timer.just_finished() {
+                    atlas.index = if atlas.index == indices.last {
+                        indices.first + 1
+                    } else {
+                        atlas.index + 1
+                    };
+                }
+            } else {
+                atlas.index = indices.first;
+            }
+
+// ======= PROJECTILE MOVEMENT AND COLLISION DETECTION CODE ========
+            
+        }
+    }
+}
+
+#[derive(Component)]
+struct Projectile {
+    wtf: u32,
+}
+
+#[derive(Component)]
+struct Player {
+    current: u32,
+    max: u32,
+}
+
+
+fn setup( mut commands: Commands, asset_server: Res<AssetServer>, mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>> ) {
+    let texture = asset_server.load("ferris_sprite_sheet.png");
+    let layout = TextureAtlasLayout::from_grid(Vec2::new(460.0, 307.0), 3, 1, None, None);
+    let texture_atlas_layout = texture_atlas_layouts.add(layout);
+    // Use only the subset of sprites in the sheet that make up the run animation
+    let animation_indices = AnimationIndices { first: 0, last: 2 };
+    commands.spawn(Camera2dBundle::default());
+    commands.spawn((
+        SpriteBundle {
+            transform: Transform::from_scale(Vec3::splat(0.5)),
+            texture,
+            ..default()
+        },
+        TextureAtlas {
+            layout: texture_atlas_layout,
+            index: animation_indices.first,
+        },
+        animation_indices,
+        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
+        Player {
+            current: 15,
+            max: 35,
+        },
+    ));
+    commands.spawn((
+        SpriteBundle {
+            transform: Transform::from_scale(Vec3::splat(0.5)),
+            texture: asset_server.load("elephant.png"),
+            ..default()
+        },
+        Projectile {
+            wtf: 10
+        }
+    ));
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+fn animate_sprite( time: Res<Time>, input: Res<ButtonInput<KeyCode>>, mut query: Query<(&AnimationIndices, &mut AnimationTimer, &mut TextureAtlas, &mut Transform, &Sprite)> ) {
     for (indices, mut timer, mut atlas, mut transform, sprite) in &mut query {
         let oldX = transform.translation.x;
         let oldY = transform.translation.y;
         if input.pressed(KeyCode::KeyW) {
-            transform.translation.y += 100.0 * time.delta_seconds();
+            transform.translation.y += 350.0 * time.delta_seconds();
         } if input.pressed(KeyCode::KeyS) {
-            transform.translation.y -= 100.0 * time.delta_seconds();
+            transform.translation.y -= 350.0 * time.delta_seconds();
         } if input.pressed(KeyCode::KeyD) {
-            transform.translation.x += 100.0 * time.delta_seconds();
+            transform.translation.x += 350.0 * time.delta_seconds();
         } if input.pressed(KeyCode::KeyA) {
-            transform.translation.x -= 100.0 * time.delta_seconds();
+            transform.translation.x -= 350.0 * time.delta_seconds();
         }
         if oldX != transform.translation.x || oldY != transform.translation.y {
             //println!("Walked!");
@@ -50,35 +219,7 @@ fn animate_sprite(
         }
         println!("{}", atlas.index);
     }
-}
-
-fn setup(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-) {
-    let texture = asset_server.load("ferris_sprite_sheet.png");
-    let layout = TextureAtlasLayout::from_grid(Vec2::new(460.0, 307.0), 3, 1, None, None);
-    let texture_atlas_layout = texture_atlas_layouts.add(layout);
-    // Use only the subset of sprites in the sheet that make up the run animation
-    let animation_indices = AnimationIndices { first: 0, last: 2 };
-    commands.spawn(Camera2dBundle::default());
-    commands.spawn((
-        SpriteBundle {
-            transform: Transform::from_scale(Vec3::splat(1.0)),
-            texture,
-            ..default()
-        },
-        TextureAtlas {
-            layout: texture_atlas_layout,
-            index: animation_indices.first,
-        },
-        animation_indices,
-        AnimationTimer(Timer::from_seconds(0.1, TimerMode::Repeating)),
-    ));
-}
-
-
+}*/
 
 
 /*use std::ptr::null;
