@@ -7,6 +7,7 @@ struct Collider;
 #[derive(Bundle)]
 struct FloorBundle {
     sprite_bundle:SpriteBundle,
+    tiling:ImageScaleMode,
     collider:Collider,
 }
 
@@ -15,7 +16,16 @@ impl FloorBundle {
         FloorBundle {
             sprite_bundle: SpriteBundle {
                 texture: m_texture,
+                sprite: Sprite {
+                    custom_size:Some(Vec2::new(800.,64.)),
+                    ..default()
+                },
                 ..default()
+            },
+            tiling:ImageScaleMode::Tiled {
+                tile_x: true,
+                tile_y: true,
+                stretch_value: 1.,
             },
             collider: Collider,
         }
@@ -24,7 +34,7 @@ impl FloorBundle {
 
 pub fn get_autorunner_game() {
     return App::new()
-        /*.add_plugins(DefaultPlugins.set(WindowPlugin {
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Autorunner!".to_string(),
                 resolution: WindowResolution::new(800., 600.),
@@ -32,8 +42,7 @@ pub fn get_autorunner_game() {
                 ..Default::default()
             }),
             ..Default::default()
-        }))*/
-        .add_plugins(DefaultPlugins)
+        }))
         .add_systems(Startup, setup)
         .run();
 }
