@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+mod autorunner;
+
 fn hello_world() {
     println!("hello world!");
 }
@@ -17,9 +19,6 @@ fn add_people(mut commands: Commands) {
 struct Name(String);
 
 fn main() {
-    App::new()
-        .add_systems(Startup, add_people)
-        .add_systems(Update, hello_world)
-        .run();
+    autorunner::get_autorunner_game();
 }
 
