@@ -14,13 +14,14 @@ static mut HEIGHT: f32 = 720.0;
 //const PLAYER_WIDTH: i32 = 100;
 //const PLAYER_HEIGHT: i32 = 100;
 
-const PROJECTILE_SIZE: Vec2 = Vec2::new(100.0, 100.0);
+const PROJECTILE_SCALE: f32 = 0.5;
 
 const PLAYER_SIZE: Vec2 = Vec2::new(0.75*460.0, 0.75*246.0);
 
 #[derive(Resource)]
 pub struct TextureAssets {
     pub textures: Vec<Handle<Image>>,
+    pub sizes: Vec<Vec2>,
 }
 
 // Function to load textures
@@ -36,7 +37,17 @@ fn load_textures(asset_server: AssetServer) -> TextureAssets {
     textures.push(asset_server.load("harmful2.png"));
     textures.push(asset_server.load("harmful3.png"));
 
-    TextureAssets { textures }
+    let s = PROJECTILE_SCALE;
+    let mut sizes = vec![Vec2::new(300.0 * s, 185.0 * s),   // food1
+                                    Vec2::new(300.0 * s, 113.0 * s),   // food2
+                                    Vec2::new(300.0 * s, 261.0 * s),   // food3
+                                    Vec2::new(300.0 * s, 153.0 * s),   // food4
+                                    Vec2::new(300.0 * s, 237.0 * s),   // food5
+                                    Vec2::new(300.0 * s, 179.0 * s),   // harmful1
+                                    Vec2::new(300.0 * s, 300.0 * s),   // harmful2
+                                    Vec2::new(255.0 * s, 300.0 * s)];  // harmful3
+
+    TextureAssets { textures, sizes }
 }
 
 fn seconds_since_epoch() -> u64 {
@@ -49,7 +60,7 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest())) // prevents blurry sprites
         .add_systems(Startup, setup)
-        .insert_resource(TextureAssets { textures: Vec::new() })
+        .insert_resource(TextureAssets { textures: Vec::new(), sizes: Vec::new() })
         .add_systems(
             Update,
             (
@@ -154,15 +165,16 @@ fn spawn_sprite(mut commands: Commands, texture_assets: Res<TextureAssets>,) {
     commands.spawn((
         SpriteBundle {
             sprite: Sprite {
-                custom_size: Some(PLAYER_SIZE),
+                custom_size: Some(texture_assets.sizes[index]),
                 ..default()
             },
-            transform: Transform::from_scale(Vec3::splat(0.5)),
+            //transform: Transform::from_scale(Vec3::splat(0.5)),
             texture: texture_assets.textures[index].clone_weak(),
             ..default()
         },
         Projectile {
             good: true,
+            size: texture_assets.sizes[index],
         },
     ));
 }
@@ -244,6 +256,7 @@ fn update_player(
 #[derive(Component)]
 struct Projectile {
     good: bool,
+    size: Vec2,
 }
 
 #[derive(Component)]
@@ -254,8 +267,9 @@ struct Player {
 
 
 fn setup( mut commands: Commands, asset_server: Res<AssetServer>, mut texture_assets: ResMut<TextureAssets>, mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>> ) {
-    let TextureAssets { textures } = load_textures(asset_server.clone());
+    let TextureAssets { textures, sizes } = load_textures(asset_server.clone());
     texture_assets.textures = textures;
+    texture_assets.sizes = sizes;
 
     let texture = asset_server.load("ferris_sprite_sheet.png");
     let layout = TextureAtlasLayout::from_grid(Vec2::new(460.0, 246.0), 3, 1, None, None);
@@ -284,7 +298,7 @@ fn setup( mut commands: Commands, asset_server: Res<AssetServer>, mut texture_as
             max: 35,
         },
     ));
-    commands.spawn((
+    /*commands.spawn((
         SpriteBundle {
             transform: Transform::from_scale(Vec3::splat(0.5)),
             texture: asset_server.load("elephant.png"),
@@ -293,7 +307,7 @@ fn setup( mut commands: Commands, asset_server: Res<AssetServer>, mut texture_as
         Projectile {
             good: true
         }
-    ));
+    ));*/
 }
 
 
