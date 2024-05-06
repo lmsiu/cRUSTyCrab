@@ -1,5 +1,6 @@
 use std::char::from_u32;
 use bevy::{prelude::*, math::vec3, };
+use  bevy::math::bounding::{IntersectsVolume};
 
 // Constant Variables
 
@@ -31,7 +32,11 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_systems(Update, bevy::window::close_on_esc)
         .add_systems(Startup, setup) //these systems are really just functions
-        .add_systems(FixedUpdate, (move_paddle, apply_velocity, check_ball_collisions.after(apply_velocity),))// runs at a fixed rate
+        .add_systems(FixedUpdate,
+                     (move_paddle,
+                      apply_velocity,
+                      check_all_crab_collisions.after(apply_velocity),
+                      check_crab_collisions.after(apply_velocity),))// runs at a fixed rate
         .run()
 }
 
@@ -219,11 +224,9 @@ fn apply_velocity(mut query: Query<(&mut Transform, &Velocity)>, time_step: Res<
 
 }
 
-fn check_ball_collisions(
-    mut crab_query: Query<(&mut Velocity, &Transform, &Crab)>,
-    collider_query: Query<(&Transform, &Collider)>,
+fn check_crab_collisions(
+    mut crab_query: Query<(&mut Velocity, &Transform, &Crab)>
 ){
-    let crab_half_size: f32 = CRAB_SIZE.x/2.0; // crab is same size both directions
     let x_min: f32 = LEFT_WALL + (WALL_THICKNESS+CRAB_SIZE.x) * 0.5;
     let x_max: f32 = RIGHT_WALL - (WALL_THICKNESS+CRAB_SIZE.x) * 0.5;
     let y_min: f32 = BOTTOM_WALL + (WALL_THICKNESS+CRAB_SIZE.y) * 0.5;
@@ -240,41 +243,30 @@ fn check_ball_collisions(
             crab_velocity.y *= -1.;
         }
     }
+}
 
+fn check_all_crab_collisions(
+    mut crab_query: Query<(&mut Velocity, &Transform, &Crab)>,
+    paddle_query: Query<(&Transform, &Paddle)>,
+){
+    for(mut crab_velocity, crab_transform, crab) in &mut crab_query {
+        for(transform, other) in &paddle_query{
+            let x_min: f32 = transform.translation.x - (PADDLE_SIZE.x/2.0);
+            let x_max: f32 = transform.translation.x + (PADDLE_SIZE.x/2.0);
+            let y_min: f32 = transform.translation.y - (PADDLE_SIZE.y+ CRAB_SIZE.y) * 0.5;
+            let y_max: f32 = transform.translation.y + (PADDLE_SIZE.y+CRAB_SIZE.y) * 0.5;
 
+            let translation: Vec3 = crab_transform.translation;
 
-/*
-        for(transform, other) in &collider_query{
-
-
-
-            // check if there is a collision and reflect in the proper direction if so
-            let mut reflect_x = false;
-            let mut reflect_y = false;
-
-            //check if there is a collision
-            if let Some(collision) = collision{
-                match collision {
-                    Collision::Left => reflect_x = crab_velocity.x > 0.0,
-                    Collision::Right => reflect_x = crab_velocity.x < 0.0,
-                    Collision::Top => reflect_y = crab_velocity.y < 0.0,
-                    Collision::Bottom => reflect_y = crab_velocity.y > 0.0,
-                    Collision::Inside => { /*do nothing*/ }
-                }
-
-                // reflect where needed if there is a collision
-                if reflect_x{
-                    crab_velocity.x *= -1.; // reflect in the opposite direction
-                }
-                if reflect_y{
+            if (translation.x >= x_min && translation.x <= x_max) {
+                if (translation.y >= y_min && translation.y <= y_max) {
                     crab_velocity.y *= -1.;
                 }
-
             }
 
         }
-        */
 
+    }
 }
 
 
