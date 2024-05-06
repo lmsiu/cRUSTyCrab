@@ -26,11 +26,18 @@ const WALL_BLOCK_WIDTH: f32 = RIGHT_WALL - LEFT_WALL;
 const WALL_BLOCK_HEIGHT: f32 = TOP_WALL - BOTTOM_WALL;
 const WALL_COLOR: Color = Color::rgb(0.8, 0.8, 0.8);
 
+// scoreboard
+const SCOREBOARD_FONT_SIZE:f32 = 40.0;
+const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
+const TEXT_COLOR: Color = Color::rgb(0.5, 0.5, 1.0);
+const SCORE_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
+
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_systems(Update, bevy::window::close_on_esc)
+        .insert_resource(Scoreboard{score: 0})
+        .add_systems(Update, (bevy::window::close_on_esc, update_scoreboard))
         .add_systems(Startup, setup) //these systems are really just functions
         .add_systems(FixedUpdate,
                      (move_paddle,
@@ -61,6 +68,11 @@ struct Collider{
 struct WallBundle{
     sprite_bundle: SpriteBundle,
     collider: Collider,
+}
+
+#[derive(Resource, Clone, Copy)]
+struct Scoreboard{
+    score: usize,
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>){
@@ -111,84 +123,106 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>){
         let horizantal_wall_size: Vec2 = Vec2::new(WALL_BLOCK_WIDTH + WALL_THICKNESS, WALL_THICKNESS);
 
         // left wall
-        commands.spawn(WallBundle{
-            sprite_bundle: SpriteBundle{
-                transform: Transform{
+        commands.spawn(WallBundle {
+            sprite_bundle: SpriteBundle {
+                transform: Transform {
                     translation: vec3(LEFT_WALL, 0.0, 0.0),
                     ..default()
                 },
-                sprite: Sprite{
+                sprite: Sprite {
                     color: WALL_COLOR,
                     custom_size: Some(vertical_wall_size),
                     ..default()
                 },
                 ..default()
             },
-            collider: Collider{
+            collider: Collider {
                 size: vertical_wall_size,
             }
-
-
         });
 
         // right wall
-        commands.spawn(WallBundle{
-            sprite_bundle: SpriteBundle{
-                transform: Transform{
+        commands.spawn(WallBundle {
+            sprite_bundle: SpriteBundle {
+                transform: Transform {
                     translation: vec3(RIGHT_WALL, 0.0, 0.0),
                     ..default()
                 },
-                sprite: Sprite{
+                sprite: Sprite {
                     color: WALL_COLOR,
                     custom_size: Some(vertical_wall_size),
                     ..default()
                 },
                 ..default()
             },
-            collider: Collider{
+            collider: Collider {
                 size: vertical_wall_size,
             }
         });
 
         // bottom wall
-        commands.spawn(WallBundle{
-            sprite_bundle: SpriteBundle{
-                transform: Transform{
+        commands.spawn(WallBundle {
+            sprite_bundle: SpriteBundle {
+                transform: Transform {
                     translation: vec3(0.0, BOTTOM_WALL, 0.0),
                     ..default()
                 },
-                sprite: Sprite{
+                sprite: Sprite {
                     color: WALL_COLOR,
                     custom_size: Some(horizantal_wall_size),
                     ..default()
                 },
                 ..default()
             },
-            collider: Collider{
+            collider: Collider {
                 size: horizantal_wall_size,
             }
         });
 
         //top wall
-        commands.spawn(WallBundle{
-            sprite_bundle: SpriteBundle{
-                transform: Transform{
+        commands.spawn(WallBundle {
+            sprite_bundle: SpriteBundle {
+                transform: Transform {
                     translation: vec3(0.0, TOP_WALL, 0.0),
                     ..default()
                 },
-                sprite: Sprite{
+                sprite: Sprite {
                     color: WALL_COLOR,
                     custom_size: Some(horizantal_wall_size),
                     ..default()
                 },
                 ..default()
             },
-            collider: Collider{
+            collider: Collider {
                 size: horizantal_wall_size,
             }
         });
-
     }
+
+        // scoreboard
+        commands.spawn((TextBundle::from_sections([
+            TextSection::new(
+            "Score: ",
+            TextStyle{
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: TEXT_COLOR,
+                ..default()
+            }),
+            TextSection::from_style(TextStyle{
+                font_size: SCOREBOARD_FONT_SIZE,
+                color: TEXT_COLOR,
+                ..default()
+            }),
+        ]).with_style(
+            Style{
+                position_type: PositionType::Absolute,
+                top: SCOREBOARD_TEXT_PADDING,
+                left: SCOREBOARD_TEXT_PADDING,
+                ..default()
+
+            }
+        ),));
+
 }
 
 fn move_paddle(
@@ -247,6 +281,7 @@ fn check_crab_collisions(
 
 fn check_all_crab_collisions(
     mut crab_query: Query<(&mut Velocity, &Transform, &Crab)>,
+    mut score: ResMut<Scoreboard>,
     paddle_query: Query<(&Transform, &Paddle)>,
 ){
     for(mut crab_velocity, crab_transform, crab) in &mut crab_query {
@@ -261,12 +296,19 @@ fn check_all_crab_collisions(
             if (translation.x >= x_min && translation.x <= x_max) {
                 if (translation.y >= y_min && translation.y <= y_max) {
                     crab_velocity.y *= -1.;
+                    score.score += 1;
                 }
             }
 
         }
 
     }
+}
+
+fn update_scoreboard(score: Res<Scoreboard>, mut query: Query<&mut Text>){
+    let mut text = query.single_mut();
+    text.sections[1].value = score.score.to_string();
+
 }
 
 
