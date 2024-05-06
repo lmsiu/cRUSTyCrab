@@ -1,10 +1,63 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, time::common_conditions::on_timer};
+use bevy::render::render_resource::Texture;
+use bevy::window::WindowResized;
+use rand::Rng;
+
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+
+static mut WIDTH: f32 = 1280.0;
+static mut HEIGHT: f32 = 720.0;
+
+//const PROJECTILE_WIDTH: i32 = 100;
+//const PROJECTILE_HEIGHT: i32 = 100;
+//const PLAYER_WIDTH: i32 = 100;
+//const PLAYER_HEIGHT: i32 = 100;
+
+const PROJECTILE_SIZE: Vec2 = Vec2::new(100.0, 100.0);
+
+const PLAYER_SIZE: Vec2 = Vec2::new(0.75*460.0, 0.75*246.0);
+
+#[derive(Resource)]
+pub struct TextureAssets {
+    pub textures: Vec<Handle<Image>>,
+}
+
+// Function to load textures
+fn load_textures(asset_server: AssetServer) -> TextureAssets {
+    let mut textures = Vec::new();
+
+    textures.push(asset_server.load("food1.png"));
+    textures.push(asset_server.load("food2.png"));
+    textures.push(asset_server.load("food3.png"));
+    textures.push(asset_server.load("food4.png"));
+    textures.push(asset_server.load("food5.png"));
+    textures.push(asset_server.load("harmful1.png"));
+    textures.push(asset_server.load("harmful2.png"));
+    textures.push(asset_server.load("harmful3.png"));
+
+    TextureAssets { textures }
+}
+
+fn seconds_since_epoch() -> u64 {
+    let now = SystemTime::now();
+    let duration_since_epoch = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+    duration_since_epoch.as_secs()
+}
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest())) // prevents blurry sprites
         .add_systems(Startup, setup)
+        .insert_resource(TextureAssets { textures: Vec::new() })
+        .add_systems(
+            Update,
+            (
+                spawn_sprite.run_if(on_timer(Duration::from_secs(1))),
+            )
+        )
         .add_systems(Update, update_player)
+        .add_systems(Update, resize_notificator)
         //.add_systems(Update, update_projectiles)
         .run();
 }
@@ -17,6 +70,42 @@ struct AnimationIndices {
 
 #[derive(Component, Deref, DerefMut)]
 struct AnimationTimer(Timer);
+
+fn resize_notificator(resize_event: Res<Events<WindowResized>>) {
+    let mut reader = resize_event.get_reader();
+    for e in resize_event.iter_current_update_events() {
+        println!("width = {} height = {}", e.width, e.height);
+        unsafe {
+            WIDTH = e.width;
+            HEIGHT = e.height;
+        }
+    }
+}
+struct ObjectBounds {
+    left: f32,
+    right: f32,
+    top: f32,
+    bottom: f32,
+}
+
+fn calculate_bounds(transform: &Transform, sprite: &Sprite, texture: &Texture) -> ObjectBounds {
+    let scale = transform.scale.x; // Assuming uniform scaling
+    let texture_size = Vec2::new(texture.width() as f32, texture.height() as f32);
+    let sprite_size = texture_size * scale;
+    let translation = transform.translation.truncate();
+
+    let left = translation.x - sprite_size.x / 2.0;
+    let right = translation.x + sprite_size.x / 2.0;
+    let top = translation.y + sprite_size.y / 2.0;
+    let bottom = translation.y - sprite_size.y / 2.0;
+
+    ObjectBounds {
+        left,
+        right,
+        top,
+        bottom,
+    }
+}
 
 /*fn hit_detection(
     mut commands: Commands,
@@ -59,6 +148,25 @@ fn update_projectiles(time: Res<Time>,
         }
     }
 }*/
+fn spawn_sprite(mut commands: Commands, texture_assets: Res<TextureAssets>,) {
+    let index = rand::thread_rng().gen_range(0..texture_assets.textures.len());
+
+    commands.spawn((
+        SpriteBundle {
+            sprite: Sprite {
+                custom_size: Some(PLAYER_SIZE),
+                ..default()
+            },
+            transform: Transform::from_scale(Vec3::splat(0.5)),
+            texture: texture_assets.textures[index].clone_weak(),
+            ..default()
+        },
+        Projectile {
+            good: true,
+        },
+    ));
+}
+
 
 fn update_player(
     mut commands: Commands,
@@ -77,20 +185,13 @@ fn update_player(
             &Sprite,
         ),
     >,
-    /*mut projectile_query: Query<
-        (
-            Entity,
-            //&mut Transform,
-            &Sprite,
-            &Projectile,
-        ),
-    >,*/
 ) {
-    for (player, projectile, indices, mut timer, mut atlas, mut transform, sprite,
-    ) in &mut query
+    let mut player_transform;
+    for (player, projectile, indices, mut timer, mut atlas, mut transform, sprite,) in &mut query
     {
         if let (Some(player), Some(indices), Some(mut timer), Some(mut atlas)) = (player, indices, timer.as_mut(), atlas.as_mut())   // if this is a PLAYER
         {
+            player_transform = transform.clone();
 // ======= FERRIS WALKING CODE ========
             let old_x = transform.translation.x;
             let old_y = transform.translation.y;
@@ -115,19 +216,34 @@ fn update_player(
                         atlas.index + 1
                     };
                 }
+                println!("X = {} Y = {}", transform.translation.x, transform.translation.y);
             } else {
                 atlas.index = indices.first;
             }
-
+        }
+    }
 // ======= PROJECTILE MOVEMENT AND COLLISION DETECTION CODE ========
+    for (player, projectile, indices, mut timer, mut atlas, mut transform, sprite,) in &mut query {
+        if let Some(projectile) = projectile {
+            transform.translation.y -= 70.0 * time.delta_seconds();
+            
+            unsafe {
+                if transform.translation.y <= -HEIGHT/2.0 {
+                    transform.translation.y = HEIGHT/2.0;
+                }
+            }
+            
+            // CHECK COLLISION TO PLAYER HERE !
             
         }
     }
+
+
 }
 
 #[derive(Component)]
 struct Projectile {
-    wtf: u32,
+    good: bool,
 }
 
 #[derive(Component)]
@@ -137,16 +253,23 @@ struct Player {
 }
 
 
-fn setup( mut commands: Commands, asset_server: Res<AssetServer>, mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>> ) {
+fn setup( mut commands: Commands, asset_server: Res<AssetServer>, mut texture_assets: ResMut<TextureAssets>, mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>> ) {
+    let TextureAssets { textures } = load_textures(asset_server.clone());
+    texture_assets.textures = textures;
+
     let texture = asset_server.load("ferris_sprite_sheet.png");
-    let layout = TextureAtlasLayout::from_grid(Vec2::new(460.0, 307.0), 3, 1, None, None);
+    let layout = TextureAtlasLayout::from_grid(Vec2::new(460.0, 246.0), 3, 1, None, None);
     let texture_atlas_layout = texture_atlas_layouts.add(layout);
     // Use only the subset of sprites in the sheet that make up the run animation
     let animation_indices = AnimationIndices { first: 0, last: 2 };
     commands.spawn(Camera2dBundle::default());
     commands.spawn((
         SpriteBundle {
-            transform: Transform::from_scale(Vec3::splat(0.5)),
+            //transform: Transform::from_scale(Vec3::splat(0.5)),
+            sprite: Sprite {
+                custom_size: Some(PLAYER_SIZE),
+                ..default()
+            },
             texture,
             ..default()
         },
@@ -168,7 +291,7 @@ fn setup( mut commands: Commands, asset_server: Res<AssetServer>, mut texture_at
             ..default()
         },
         Projectile {
-            wtf: 10
+            good: true
         }
     ));
 }
