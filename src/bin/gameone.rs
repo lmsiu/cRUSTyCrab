@@ -43,7 +43,7 @@ fn main() {
         .add_systems(FixedUpdate,
                      (move_paddle,
                       apply_velocity,
-                      check_all_crab_collisions.after(apply_velocity),
+                      check_crab_paddle_collisions.after(apply_velocity),
                       check_crab_collisions.after(apply_velocity),))// runs at a fixed rate
         .run()
 }
@@ -280,7 +280,7 @@ fn check_crab_collisions(
     }
 }
 
-fn check_all_crab_collisions(
+fn check_crab_paddle_collisions(
     mut crab_query: Query<(&mut Velocity, &Transform, &Crab)>,
     mut score: ResMut<Scoreboard>,
     paddle_query: Query<(&Transform, &Paddle)>,
