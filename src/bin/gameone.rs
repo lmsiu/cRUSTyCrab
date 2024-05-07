@@ -311,8 +311,6 @@ fn check_crab_paddle_collisions(
                         crab_velocity.y *= -1.;
 
                     }
-                    println!("{}" , crab_velocity.y);
-
                     score.score += 1;
                 }
             }
