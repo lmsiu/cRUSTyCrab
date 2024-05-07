@@ -33,12 +33,17 @@ const SCOREBOARD_TEXT_PADDING: Val = Val::Px(5.0);
 const TEXT_COLOR: Color = Color::rgb(0.5, 0.5, 1.0);
 const SCORE_COLOR: Color = Color::rgb(1.0, 0.5, 0.5);
 
+// win screen
+const WIN_SCREEN_POSITION: Vec3 = Vec3::new(0.0, 0.0, 1.0);
+const WIN_SCREEN_SIZE: Vec2 = Vec2::new(250.0, 250.0);
+
+
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .insert_resource(Scoreboard{score: 0})
-        .add_systems(Update, (bevy::window::close_on_esc, update_scoreboard))
+        .add_systems(Update, (bevy::window::close_on_esc, update_scoreboard, check_win.after(update_scoreboard),))
         .add_systems(Startup, setup) //these systems are really just functions
         .add_systems(FixedUpdate,
                      (move_paddle,
@@ -75,6 +80,9 @@ struct WallBundle{
 struct Scoreboard{
     score: usize,
 }
+
+#[derive(Component)]
+struct GameOverText;
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>){
     // make the game camera
@@ -316,10 +324,47 @@ fn check_crab_paddle_collisions(
 
 fn update_scoreboard(score: Res<Scoreboard>, mut query: Query<&mut Text>){
     let mut text = query.single_mut();
-    text.sections[1].value = score.score.to_string();
+    if(score.score <= 10) {
+        text.sections[1].value = score.score.to_string();
+    }
 
 }
 
+fn check_win(score: Res<Scoreboard>, mut crab_query: Query<&mut Velocity>, mut commands: Commands, asset_server: Res<AssetServer>)
+{
+
+    if score.score >= 10 {
+        for(mut crab_velocity) in &mut crab_query{
+            crab_velocity.x = 0.;
+            crab_velocity.y = 0.;
+
+            // win screen spawn
+            let win_texture = asset_server.load("textures\\wingraphic.png");
+            commands.spawn(
+                (SpriteBundle{
+                    transform: Transform{
+                        translation: WIN_SCREEN_POSITION,
+                        ..default()
+                    },
+                    sprite: Sprite {
+                        //color: CRAB_COLOR,
+                        custom_size: Some(WIN_SCREEN_SIZE),
+                        ..default()
+                    },
+                    texture: win_texture,
+                    ..default()
+                },
+                 GameOverText
+                )
+            );
+
+
+        }
+
+
+    }
+
+}
 
 
 
