@@ -61,11 +61,11 @@ fn setup(
     
     // player
     commands.spawn(RigidBody::Dynamic)
-        .insert(Collider::ball(10.0))
+        .insert(Collider::ball(130.0))
         .insert(KinematicCharacterController::default())
-        .insert(TransformBundle::from(Transform::from_xyz(0.0, 400.0, 0.0)))
         .insert(SpriteBundle {
-            texture: asset_server.load("m_brick.png"),
+            texture: asset_server.load("rustacean-flat-happy.png"),
+            transform: Transform::from_scale(Vec3::new(0.25,0.25,1.)).with_translation(Vec3::new(-200., -200., 0.)),
             ..Default::default()
         })
         .insert(GravityScale(5.0))
