@@ -101,7 +101,7 @@ pub fn get_autorunner_game() {
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0)) // Physics plugin
         .add_plugins(RapierDebugRenderPlugin::default()) // Debug plugin
         .add_systems(Startup, setup)
-        .add_systems(Update, (controls, throw_rocks, score_handler, scoreboard_updater))
+        .add_systems(Update, (controls, throw_rocks, score_handler, scoreboard_updater, death_handler, death_handler2))
         .run();
 }
 
@@ -171,17 +171,16 @@ fn controls(input:Res<ButtonInput<KeyCode>>,mut query:Query<(&mut Velocity, &mut
 }
 
 fn throw_rocks(mut commands:Commands, time: Res<Time>, mut rock_time: ResMut<RockTime>,
-    asset_server:Res<AssetServer>) {
+    asset_server:Res<AssetServer>, mut score_res: ResMut<GameScore>) {
     rock_time.timer.tick(time.delta());
 
-    if rock_time.timer.just_finished() {
+    if rock_time.timer.just_finished() && score_res.game_running {
         commands.spawn(ObstacleBundle::new(asset_server.load("harmful1.png")))
             .insert(Sensor);
     }
 }
 
-fn score_handler(mut commands:Commands, time: Res<Time>, mut score_res: ResMut<GameScore>,
-    asset_server:Res<AssetServer>) {
+fn score_handler(mut commands:Commands, time: Res<Time>, mut score_res: ResMut<GameScore>) {
     score_res.timer.tick(time.delta());
 
     if score_res.timer.just_finished() && score_res.game_running {
@@ -192,4 +191,21 @@ fn score_handler(mut commands:Commands, time: Res<Time>, mut score_res: ResMut<G
 fn scoreboard_updater(score_res: Res<GameScore>, mut query: Query<&mut Text, With<Ui>>) {
     let mut text = query.single_mut();
     text.sections[1].value = score_res.score.to_string();
+}
+
+fn death_handler(mut score_res:ResMut<GameScore>, rapier_context:Res<RapierContext>, mut query:Query<Entity, With<Player>>) {
+    let entity = query.single_mut();
+    for (collider1, collider2, intersecting) in rapier_context.intersection_pairs_with(entity) {
+        if intersecting {
+            println!("There was an intersection!");
+            score_res.game_running = false;
+        }
+    }
+}
+
+fn death_handler2(mut score_res:ResMut<GameScore>, mut query:Query<&mut Transform, With<Player>>) {
+    let mut transform = query.single_mut();
+    if !score_res.game_running {
+        transform.rotation = Quat::from_rotation_z(std::f32::consts::PI);
+    }
 }
