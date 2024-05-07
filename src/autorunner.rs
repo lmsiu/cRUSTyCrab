@@ -27,6 +27,9 @@ struct RockTime {
     timer:Timer,
 }
 
+#[derive(Component)]
+struct Ui;
+
 #[derive(Resource)]
 struct GameScore {
     timer:Timer,
@@ -98,7 +101,7 @@ pub fn get_autorunner_game() {
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0)) // Physics plugin
         .add_plugins(RapierDebugRenderPlugin::default()) // Debug plugin
         .add_systems(Startup, setup)
-        .add_systems(Update, (controls, throw_rocks))
+        .add_systems(Update, (controls, throw_rocks, score_handler, scoreboard_updater))
         .run();
 }
 
@@ -137,6 +140,27 @@ fn setup(
         score:0,
         game_running:true,
     });
+
+    commands.spawn((
+        Ui,
+        TextBundle::from_sections([
+            TextSection::new(
+                "Score: ",
+                TextStyle{
+                    font_size:40.,
+                    color:Color::rgb(0.5, 0.5, 1.0),
+                    ..default()
+                }
+            ),
+            TextSection::from_style(
+                TextStyle{
+                    font_size:40.,
+                    color:Color::rgb(0.5, 0.5, 1.0),
+                    ..default()
+                }
+            ),
+        ]),
+    ));
 }
 
 fn controls(input:Res<ButtonInput<KeyCode>>,mut query:Query<(&mut Velocity, &mut Player)>) {
@@ -163,4 +187,9 @@ fn score_handler(mut commands:Commands, time: Res<Time>, mut score_res: ResMut<G
     if score_res.timer.just_finished() && score_res.game_running {
         score_res.score += 1;
     }
+}
+
+fn scoreboard_updater(score_res: Res<GameScore>, mut query: Query<&mut Text, With<Ui>>) {
+    let mut text = query.single_mut();
+    text.sections[1].value = score_res.score.to_string();
 }
