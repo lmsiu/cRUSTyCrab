@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 use bevy::window::{Window, WindowResolution, WindowPlugin};
+use std::time::Duration;
+use rand::Rng;
 
 #[derive(Bundle)]
 struct FloorBundle {
@@ -8,8 +10,39 @@ struct FloorBundle {
     tiling:ImageScaleMode,
 }
 
+
+#[derive(Bundle)]
+struct ObstacleBundle {
+    sprite_bundle:SpriteBundle,
+    rigidbody:RigidBody,
+    collider:Collider,
+    velocity:Velocity,
+}
+
 #[derive(Component)]
 struct Player(i32);
+
+#[derive(Resource)]
+struct RockTime {
+    timer:Timer,
+}
+
+#[derive(Resource)]
+struct GameScore {
+    timer:Timer,
+    score:u32,
+    game_running:bool,
+}
+
+impl GameScore {
+    fn get_score(self) -> u32 {
+        return self.score;
+    }
+
+    fn increment_score(mut self) {
+        self.score += 1;
+    }
+}
 
 impl FloorBundle {
     fn new(m_texture:Handle<Image>) -> FloorBundle {
@@ -32,6 +65,25 @@ impl FloorBundle {
     }
 }
 
+impl ObstacleBundle {
+    fn new(m_texture:Handle<Image>) -> ObstacleBundle {
+        ObstacleBundle {
+            sprite_bundle: SpriteBundle {
+                texture: m_texture,
+                transform: Transform::from_xyz(500.,-190.,0.)
+                    .with_scale(Vec3::new(0.25,0.25,1.)),
+                ..default()
+            },
+            rigidbody: RigidBody::KinematicVelocityBased,
+            velocity: Velocity {
+                linvel: Vec2::new(-rand::thread_rng().gen_range(200..230) as f32,0.),
+                ..default()
+            },
+            collider: Collider::ball(105.),
+        }
+    }
+}
+
 pub fn get_autorunner_game() {
     return App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
@@ -46,7 +98,7 @@ pub fn get_autorunner_game() {
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0)) // Physics plugin
         .add_plugins(RapierDebugRenderPlugin::default()) // Debug plugin
         .add_systems(Startup, setup)
-        .add_systems(Update, controls)
+        .add_systems(Update, (controls, throw_rocks))
         .run();
 }
 
@@ -74,11 +126,41 @@ fn setup(
             ..Default::default()
         })
         .insert(Player(0));
+    
+    
+    commands.insert_resource(RockTime{
+        timer:Timer::from_seconds(1.7, TimerMode::Repeating),
+    });
+
+    commands.insert_resource(GameScore{
+        timer:Timer::from_seconds(1., TimerMode::Repeating),
+        score:0,
+        game_running:true,
+    });
 }
 
-fn controls(input:Res<ButtonInput<KeyCode>>, time:Res<Time>,mut query:Query<(&mut Velocity, &mut Player)>) {
-    let (mut player, whatever)= query.single_mut();
+fn controls(input:Res<ButtonInput<KeyCode>>,mut query:Query<(&mut Velocity, &mut Player)>) {
+    let (mut player, _whatever)= query.single_mut();
     if input.just_pressed(KeyCode::Space) {
         player.linvel = Vec2::new(0., 300.);
+    }
+}
+
+fn throw_rocks(mut commands:Commands, time: Res<Time>, mut rock_time: ResMut<RockTime>,
+    asset_server:Res<AssetServer>) {
+    rock_time.timer.tick(time.delta());
+
+    if rock_time.timer.just_finished() {
+        commands.spawn(ObstacleBundle::new(asset_server.load("harmful1.png")))
+            .insert(Sensor);
+    }
+}
+
+fn score_handler(mut commands:Commands, time: Res<Time>, mut score_res: ResMut<GameScore>,
+    asset_server:Res<AssetServer>) {
+    score_res.timer.tick(time.delta());
+
+    if score_res.timer.just_finished() && score_res.game_running {
+        score_res.score += 1;
     }
 }
