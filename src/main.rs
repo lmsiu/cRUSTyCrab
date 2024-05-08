@@ -24,4 +24,3 @@ fn main() {
         .add_systems(Update, hello_world)
         .run();
 }
-
