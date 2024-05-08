@@ -10,7 +10,8 @@ enum GameState {
     #[default]
     Splash,
     Menu,
-    Game,
+    GameOne,
+    GameTwo,
 }
 
 fn main() {
@@ -21,7 +22,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Update, bevy::window::close_on_esc)
         // Adds the plugins for each state
-        .add_plugins((splash::splash_plugin, menu::menu_plugin, game::game_plugin))
+        .add_plugins((splash::splash_plugin, menu::menu_plugin, gameone::gameone_plugin, gametwo::gametwo_plugin))
         .run();
 }
 
@@ -99,7 +100,7 @@ mod splash {
 }
 
 // work here maybe?
-mod game {
+mod gameone {
     use bevy::prelude::*;
     use std::process::Command;
 
@@ -107,17 +108,39 @@ mod game {
 
     // This plugin will contain the game. In this case, it's just be a screen that will
     // display the current settings for 5 seconds before returning to the menu
-    pub fn game_plugin(app: &mut App) {
-        app.add_systems(OnEnter(GameState::Game), game)
-            .add_systems(OnExit(GameState::Game), despawn_screen::<OnGameScreen>);
+    pub fn gameone_plugin(app: &mut App) {
+        app.add_systems(OnEnter(GameState::GameOne), gameone)
+            .add_systems(OnExit(GameState::GameOne), despawn_screen::<OnGameScreen>);
     }
 
     // Tag component used to tag entities added on the game screen
     #[derive(Component)]
     struct OnGameScreen;
 
-    fn game() {
+    fn gameone() {
        Command::new("cargo").arg("run").arg("--bin").arg("gameone").output().expect("unable to run game one");
+    }
+}
+
+mod gametwo {
+    use bevy::prelude::*;
+    use std::process::Command;
+
+    use super::{despawn_screen, GameState};
+
+    // This plugin will contain the game. In this case, it's just be a screen that will
+    // display the current settings for 5 seconds before returning to the menu
+    pub fn gametwo_plugin(app: &mut App) {
+        app.add_systems(OnEnter(GameState::GameTwo), gametwo)
+            .add_systems(OnExit(GameState::GameTwo), despawn_screen::<OnGameScreen>);
+    }
+
+    // Tag component used to tag entities added on the game screen
+    #[derive(Component)]
+    struct OnGameScreen;
+
+    fn gametwo() {
+       Command::new("cargo").arg("run").arg("--bin").arg("gametwo").output().expect("unable to run game one");
     }
 }
 
@@ -126,10 +149,7 @@ mod menu {
 
     use super::{despawn_screen, GameState, TEXT_COLOR};
 
-    // This plugin manages the menu, with 5 different screens:
-    // - a main menu with "New Game", "Settings", "Quit"
-    // - a settings menu with two submenus and a back button
-    // - two settings screen with a setting that can be set and a back button
+    // This plugin manages the menu
     pub fn menu_plugin(app: &mut App) {
         app
             // At start, the menu is not enabled. This will be changed in `menu_setup` when
@@ -171,7 +191,8 @@ mod menu {
     // All actions that can be triggered from a button click
     #[derive(Component)]
     enum MenuButtonAction {
-        Play,
+        PlayOne,
+        PlayTwo,
         Quit,
     }
 
@@ -273,7 +294,7 @@ mod menu {
                                     background_color: NORMAL_BUTTON.into(),
                                     ..default()
                                 },
-                                MenuButtonAction::Play,
+                                MenuButtonAction::PlayOne,
                             ))
                             .with_children(|parent| {
                                 let icon = asset_server.load("textures/Game Icons/right.png");
@@ -284,6 +305,27 @@ mod menu {
                                 });
                                 parent.spawn(TextBundle::from_section(
                                     "Game One",
+                                    button_text_style.clone(),
+                                ));
+                            });
+                        parent
+                            .spawn((
+                                ButtonBundle {
+                                    style: button_style.clone(),
+                                    background_color: NORMAL_BUTTON.into(),
+                                    ..default()
+                                },
+                                MenuButtonAction::PlayTwo,
+                            ))
+                            .with_children(|parent| {
+                                let icon = asset_server.load("textures/Game Icons/right.png");
+                                parent.spawn(ImageBundle {
+                                    style: button_icon_style.clone(),
+                                    image: UiImage::new(icon),
+                                    ..default()
+                                });
+                                parent.spawn(TextBundle::from_section(
+                                    "Game Two",
                                     button_text_style.clone(),
                                 ));
                             });
@@ -324,8 +366,12 @@ mod menu {
                     MenuButtonAction::Quit => {
                         app_exit_events.send(AppExit);
                     }
-                    MenuButtonAction::Play => {
-                        game_state.set(GameState::Game);
+                    MenuButtonAction::PlayOne => {
+                        game_state.set(GameState::GameOne);
+                        menu_state.set(MenuState::Disabled);
+                    }
+                    MenuButtonAction::PlayTwo => {
+                        game_state.set(GameState::GameTwo);
                         menu_state.set(MenuState::Disabled);
                     }
                 }

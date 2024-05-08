@@ -1,6 +1,6 @@
 use bevy::{prelude::*, time::common_conditions::on_timer};
 use bevy::render::render_resource::Texture;
-use bevy::window::{PresentMode, WindowResized};
+use bevy::window::{close_on_esc, PresentMode, WindowResized};
 use rand::Rng;
 
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -72,6 +72,7 @@ fn main() {
         .add_systems(
             Update,
             (
+                close_on_esc,
                 spawn_projectile.run_if(on_timer(Duration::from_millis(500))),
             )
         )
