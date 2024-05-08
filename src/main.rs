@@ -1,4 +1,4 @@
-
+// Source : https://github.com/bevyengine/bevy/blob/main/examples/games/game_menu.rs
 
 use bevy::prelude::*;
 
@@ -13,24 +13,9 @@ enum GameState {
     Game,
 }
 
-// One of the two settings that can be set through the menu. It will be a resource in the app
-#[derive(Resource, Debug, Component, PartialEq, Eq, Clone, Copy)]
-enum DisplayQuality {
-    Low,
-    Medium,
-    High,
-}
-
-// One of the two settings that can be set through the menu. It will be a resource in the app
-#[derive(Resource, Debug, Component, PartialEq, Eq, Clone, Copy)]
-struct Volume(u32);
-
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        // Insert as resource the initial value for the settings resources
-        .insert_resource(DisplayQuality::Medium)
-        .insert_resource(Volume(7))
         // Declare the game state, whose starting value is determined by the `Default` trait
         .init_state::<GameState>()
         .add_systems(Startup, setup)
@@ -112,10 +97,11 @@ mod splash {
     }
 }
 
+// work here maybe?
 mod game {
     use bevy::prelude::*;
 
-    use super::{despawn_screen, DisplayQuality, GameState, Volume, TEXT_COLOR};
+    use super::{despawn_screen, GameState, TEXT_COLOR};
 
     // This plugin will contain the game. In this case, it's just be a screen that will
     // display the current settings for 5 seconds before returning to the menu
@@ -134,8 +120,6 @@ mod game {
 
     fn game_setup(
         mut commands: Commands,
-        display_quality: Res<DisplayQuality>,
-        volume: Res<Volume>,
     ) {
         commands
             .spawn((
@@ -184,38 +168,7 @@ mod game {
                                 ..default()
                             }),
                         );
-                        parent.spawn(
-                            TextBundle::from_sections([
-                                TextSection::new(
-                                    format!("quality: {:?}", *display_quality),
-                                    TextStyle {
-                                        font_size: 60.0,
-                                        color: Color::BLUE,
-                                        ..default()
-                                    },
-                                ),
-                                TextSection::new(
-                                    " - ",
-                                    TextStyle {
-                                        font_size: 60.0,
-                                        color: TEXT_COLOR,
-                                        ..default()
-                                    },
-                                ),
-                                TextSection::new(
-                                    format!("volume: {:?}", *volume),
-                                    TextStyle {
-                                        font_size: 60.0,
-                                        color: Color::GREEN,
-                                        ..default()
-                                    },
-                                ),
-                            ])
-                            .with_style(Style {
-                                margin: UiRect::all(Val::Px(50.0)),
-                                ..default()
-                            }),
-                        );
+                        
                     });
             });
         // Spawn a 5 seconds timer to trigger going back to the menu
@@ -237,7 +190,7 @@ mod game {
 mod menu {
     use bevy::{app::AppExit, prelude::*};
 
-    use super::{despawn_screen, DisplayQuality, GameState, Volume, TEXT_COLOR};
+    use super::{despawn_screen, GameState, TEXT_COLOR};
 
     // This plugin manages the menu, with 5 different screens:
     // - a main menu with "New Game", "Settings", "Quit"
@@ -253,35 +206,6 @@ mod menu {
             // Systems to handle the main menu screen
             .add_systems(OnEnter(MenuState::Main), main_menu_setup)
             .add_systems(OnExit(MenuState::Main), despawn_screen::<OnMainMenuScreen>)
-            // Systems to handle the settings menu screen
-            .add_systems(OnEnter(MenuState::Settings), settings_menu_setup)
-            .add_systems(
-                OnExit(MenuState::Settings),
-                despawn_screen::<OnSettingsMenuScreen>,
-            )
-            // Systems to handle the display settings screen
-            .add_systems(
-                OnEnter(MenuState::SettingsDisplay),
-                display_settings_menu_setup,
-            )
-            .add_systems(
-                Update,
-                (setting_button::<DisplayQuality>.run_if(in_state(MenuState::SettingsDisplay)),),
-            )
-            .add_systems(
-                OnExit(MenuState::SettingsDisplay),
-                despawn_screen::<OnDisplaySettingsMenuScreen>,
-            )
-            // Systems to handle the sound settings screen
-            .add_systems(OnEnter(MenuState::SettingsSound), sound_settings_menu_setup)
-            .add_systems(
-                Update,
-                setting_button::<Volume>.run_if(in_state(MenuState::SettingsSound)),
-            )
-            .add_systems(
-                OnExit(MenuState::SettingsSound),
-                despawn_screen::<OnSoundSettingsMenuScreen>,
-            )
             // Common systems to all screens that handles buttons behavior
             .add_systems(
                 Update,
@@ -293,9 +217,6 @@ mod menu {
     #[derive(Clone, Copy, Default, Eq, PartialEq, Debug, Hash, States)]
     enum MenuState {
         Main,
-        Settings,
-        SettingsDisplay,
-        SettingsSound,
         #[default]
         Disabled,
     }
@@ -303,18 +224,6 @@ mod menu {
     // Tag component used to tag entities added on the main menu screen
     #[derive(Component)]
     struct OnMainMenuScreen;
-
-    // Tag component used to tag entities added on the settings menu screen
-    #[derive(Component)]
-    struct OnSettingsMenuScreen;
-
-    // Tag component used to tag entities added on the display settings menu screen
-    #[derive(Component)]
-    struct OnDisplaySettingsMenuScreen;
-
-    // Tag component used to tag entities added on the sound settings menu screen
-    #[derive(Component)]
-    struct OnSoundSettingsMenuScreen;
 
     const NORMAL_BUTTON: Color = Color::rgb(0.15, 0.15, 0.15);
     const HOVERED_BUTTON: Color = Color::rgb(0.25, 0.25, 0.25);
@@ -329,11 +238,6 @@ mod menu {
     #[derive(Component)]
     enum MenuButtonAction {
         Play,
-        Settings,
-        SettingsDisplay,
-        SettingsSound,
-        BackToMainMenu,
-        BackToSettings,
         Quit,
     }
 
@@ -464,28 +368,7 @@ mod menu {
                                     ..default()
                                 });
                                 parent.spawn(TextBundle::from_section(
-                                    "New Game",
-                                    button_text_style.clone(),
-                                ));
-                            });
-                        parent
-                            .spawn((
-                                ButtonBundle {
-                                    style: button_style.clone(),
-                                    background_color: NORMAL_BUTTON.into(),
-                                    ..default()
-                                },
-                                MenuButtonAction::Settings,
-                            ))
-                            .with_children(|parent| {
-                                let icon = asset_server.load("textures/Game Icons/wrench.png");
-                                parent.spawn(ImageBundle {
-                                    style: button_icon_style.clone(),
-                                    image: UiImage::new(icon),
-                                    ..default()
-                                });
-                                parent.spawn(TextBundle::from_section(
-                                    "Settings",
+                                    "Game One",
                                     button_text_style.clone(),
                                 ));
                             });
@@ -511,266 +394,6 @@ mod menu {
             });
     }
 
-    fn settings_menu_setup(mut commands: Commands) {
-        let button_style = Style {
-            width: Val::Px(200.0),
-            height: Val::Px(65.0),
-            margin: UiRect::all(Val::Px(20.0)),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            ..default()
-        };
-
-        let button_text_style = TextStyle {
-            font_size: 40.0,
-            color: TEXT_COLOR,
-            ..default()
-        };
-
-        commands
-            .spawn((
-                NodeBundle {
-                    style: Style {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        align_items: AlignItems::Center,
-                        justify_content: JustifyContent::Center,
-                        ..default()
-                    },
-                    ..default()
-                },
-                OnSettingsMenuScreen,
-            ))
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        background_color: Color::CRIMSON.into(),
-                        ..default()
-                    })
-                    .with_children(|parent| {
-                        for (action, text) in [
-                            (MenuButtonAction::SettingsDisplay, "Display"),
-                            (MenuButtonAction::SettingsSound, "Sound"),
-                            (MenuButtonAction::BackToMainMenu, "Back"),
-                        ] {
-                            parent
-                                .spawn((
-                                    ButtonBundle {
-                                        style: button_style.clone(),
-                                        background_color: NORMAL_BUTTON.into(),
-                                        ..default()
-                                    },
-                                    action,
-                                ))
-                                .with_children(|parent| {
-                                    parent.spawn(TextBundle::from_section(
-                                        text,
-                                        button_text_style.clone(),
-                                    ));
-                                });
-                        }
-                    });
-            });
-    }
-
-    fn display_settings_menu_setup(mut commands: Commands, display_quality: Res<DisplayQuality>) {
-        let button_style = Style {
-            width: Val::Px(200.0),
-            height: Val::Px(65.0),
-            margin: UiRect::all(Val::Px(20.0)),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            ..default()
-        };
-        let button_text_style = TextStyle {
-            font_size: 40.0,
-            color: TEXT_COLOR,
-            ..default()
-        };
-
-        commands
-            .spawn((
-                NodeBundle {
-                    style: Style {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        align_items: AlignItems::Center,
-                        justify_content: JustifyContent::Center,
-                        ..default()
-                    },
-                    ..default()
-                },
-                OnDisplaySettingsMenuScreen,
-            ))
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        background_color: Color::CRIMSON.into(),
-                        ..default()
-                    })
-                    .with_children(|parent| {
-                        // Create a new `NodeBundle`, this time not setting its `flex_direction`. It will
-                        // use the default value, `FlexDirection::Row`, from left to right.
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    align_items: AlignItems::Center,
-                                    ..default()
-                                },
-                                background_color: Color::CRIMSON.into(),
-                                ..default()
-                            })
-                            .with_children(|parent| {
-                                // Display a label for the current setting
-                                parent.spawn(TextBundle::from_section(
-                                    "Display Quality",
-                                    button_text_style.clone(),
-                                ));
-                                // Display a button for each possible value
-                                for quality_setting in [
-                                    DisplayQuality::Low,
-                                    DisplayQuality::Medium,
-                                    DisplayQuality::High,
-                                ] {
-                                    let mut entity = parent.spawn((
-                                        ButtonBundle {
-                                            style: Style {
-                                                width: Val::Px(150.0),
-                                                height: Val::Px(65.0),
-                                                ..button_style.clone()
-                                            },
-                                            background_color: NORMAL_BUTTON.into(),
-                                            ..default()
-                                        },
-                                        quality_setting,
-                                    ));
-                                    entity.with_children(|parent| {
-                                        parent.spawn(TextBundle::from_section(
-                                            format!("{quality_setting:?}"),
-                                            button_text_style.clone(),
-                                        ));
-                                    });
-                                    if *display_quality == quality_setting {
-                                        entity.insert(SelectedOption);
-                                    }
-                                }
-                            });
-                        // Display the back button to return to the settings screen
-                        parent
-                            .spawn((
-                                ButtonBundle {
-                                    style: button_style,
-                                    background_color: NORMAL_BUTTON.into(),
-                                    ..default()
-                                },
-                                MenuButtonAction::BackToSettings,
-                            ))
-                            .with_children(|parent| {
-                                parent.spawn(TextBundle::from_section("Back", button_text_style));
-                            });
-                    });
-            });
-    }
-
-    fn sound_settings_menu_setup(mut commands: Commands, volume: Res<Volume>) {
-        let button_style = Style {
-            width: Val::Px(200.0),
-            height: Val::Px(65.0),
-            margin: UiRect::all(Val::Px(20.0)),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            ..default()
-        };
-        let button_text_style = TextStyle {
-            font_size: 40.0,
-            color: TEXT_COLOR,
-            ..default()
-        };
-
-        commands
-            .spawn((
-                NodeBundle {
-                    style: Style {
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        align_items: AlignItems::Center,
-                        justify_content: JustifyContent::Center,
-                        ..default()
-                    },
-                    ..default()
-                },
-                OnSoundSettingsMenuScreen,
-            ))
-            .with_children(|parent| {
-                parent
-                    .spawn(NodeBundle {
-                        style: Style {
-                            flex_direction: FlexDirection::Column,
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        background_color: Color::CRIMSON.into(),
-                        ..default()
-                    })
-                    .with_children(|parent| {
-                        parent
-                            .spawn(NodeBundle {
-                                style: Style {
-                                    align_items: AlignItems::Center,
-                                    ..default()
-                                },
-                                background_color: Color::CRIMSON.into(),
-                                ..default()
-                            })
-                            .with_children(|parent| {
-                                parent.spawn(TextBundle::from_section(
-                                    "Volume",
-                                    button_text_style.clone(),
-                                ));
-                                for volume_setting in [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] {
-                                    let mut entity = parent.spawn((
-                                        ButtonBundle {
-                                            style: Style {
-                                                width: Val::Px(30.0),
-                                                height: Val::Px(65.0),
-                                                ..button_style.clone()
-                                            },
-                                            background_color: NORMAL_BUTTON.into(),
-                                            ..default()
-                                        },
-                                        Volume(volume_setting),
-                                    ));
-                                    if *volume == Volume(volume_setting) {
-                                        entity.insert(SelectedOption);
-                                    }
-                                }
-                            });
-                        parent
-                            .spawn((
-                                ButtonBundle {
-                                    style: button_style,
-                                    background_color: NORMAL_BUTTON.into(),
-                                    ..default()
-                                },
-                                MenuButtonAction::BackToSettings,
-                            ))
-                            .with_children(|parent| {
-                                parent.spawn(TextBundle::from_section("Back", button_text_style));
-                            });
-                    });
-            });
-    }
-
     fn menu_action(
         interaction_query: Query<
             (&Interaction, &MenuButtonAction),
@@ -789,17 +412,6 @@ mod menu {
                     MenuButtonAction::Play => {
                         game_state.set(GameState::Game);
                         menu_state.set(MenuState::Disabled);
-                    }
-                    MenuButtonAction::Settings => menu_state.set(MenuState::Settings),
-                    MenuButtonAction::SettingsDisplay => {
-                        menu_state.set(MenuState::SettingsDisplay);
-                    }
-                    MenuButtonAction::SettingsSound => {
-                        menu_state.set(MenuState::SettingsSound);
-                    }
-                    MenuButtonAction::BackToMainMenu => menu_state.set(MenuState::Main),
-                    MenuButtonAction::BackToSettings => {
-                        menu_state.set(MenuState::Settings);
                     }
                 }
             }
