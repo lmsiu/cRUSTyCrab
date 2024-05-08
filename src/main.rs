@@ -100,6 +100,7 @@ mod splash {
 // work here maybe?
 mod game {
     use bevy::prelude::*;
+    use std::process::Command;
 
     use super::{despawn_screen, GameState, TEXT_COLOR};
 
@@ -172,18 +173,20 @@ mod game {
                     });
             });
         // Spawn a 5 seconds timer to trigger going back to the menu
-        commands.insert_resource(GameTimer(Timer::from_seconds(5.0, TimerMode::Once)));
+        commands.insert_resource(GameTimer(Timer::from_seconds(0.5, TimerMode::Once)));
     }
 
     // Tick the timer, and change state when finished
+        
     fn game(
-        time: Res<Time>,
-        mut game_state: ResMut<NextState<GameState>>,
-        mut timer: ResMut<GameTimer>,
+        time: Res<Time>, 
+        mut game_state: ResMut<NextState<GameState>>, 
+        mut timer: ResMut<GameTimer>
     ) {
         if timer.tick(time.delta()).finished() {
             game_state.set(GameState::Menu);
         }
+       Command::new("cargo").arg("run").arg("--bin").arg("gameone").output().expect("unable to run game one");
     }
 }
 
@@ -258,25 +261,6 @@ mod menu {
         }
     }
 
-    // This system updates the settings when a new value for a setting is selected, and marks
-    // the button as the one currently selected
-    fn setting_button<T: Resource + Component + PartialEq + Copy>(
-        interaction_query: Query<(&Interaction, &T, Entity), (Changed<Interaction>, With<Button>)>,
-        mut selected_query: Query<(Entity, &mut BackgroundColor), With<SelectedOption>>,
-        mut commands: Commands,
-        mut setting: ResMut<T>,
-    ) {
-        for (interaction, button_setting, entity) in &interaction_query {
-            if *interaction == Interaction::Pressed && *setting != *button_setting {
-                let (previous_button, mut previous_color) = selected_query.single_mut();
-                *previous_color = NORMAL_BUTTON.into();
-                commands.entity(previous_button).remove::<SelectedOption>();
-                commands.entity(entity).insert(SelectedOption);
-                *setting = *button_setting;
-            }
-        }
-    }
-
     fn menu_setup(mut menu_state: ResMut<NextState<MenuState>>) {
         menu_state.set(MenuState::Main);
     }
@@ -334,7 +318,7 @@ mod menu {
                         // Display the game name
                         parent.spawn(
                             TextBundle::from_section(
-                                "Bevy Game Menu UI",
+                                "CRUSTACEAN RECREATION",
                                 TextStyle {
                                     font_size: 80.0,
                                     color: TEXT_COLOR,
