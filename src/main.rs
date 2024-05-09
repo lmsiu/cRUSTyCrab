@@ -106,8 +106,7 @@ mod gameone {
 
     use super::{despawn_screen, GameState};
 
-    // This plugin will contain the game. In this case, it's just be a screen that will
-    // display the current settings for 5 seconds before returning to the menu
+    // GAME ONE PLUGIN
     pub fn gameone_plugin(app: &mut App) {
         app.add_systems(OnEnter(GameState::GameOne), gameone)
             .add_systems(OnExit(GameState::GameOne), despawn_screen::<OnGameScreen>);
@@ -128,8 +127,7 @@ mod gametwo {
 
     use super::{despawn_screen, GameState};
 
-    // This plugin will contain the game. In this case, it's just be a screen that will
-    // display the current settings for 5 seconds before returning to the menu
+    // GAME TWO PLUGIN
     pub fn gametwo_plugin(app: &mut App) {
         app.add_systems(OnEnter(GameState::GameTwo), gametwo)
             .add_systems(OnExit(GameState::GameTwo), despawn_screen::<OnGameScreen>);
@@ -189,6 +187,7 @@ mod menu {
     struct SelectedOption;
 
     // All actions that can be triggered from a button click
+    // GAME BUTTONS
     #[derive(Component)]
     enum MenuButtonAction {
         PlayOne,
@@ -220,8 +219,8 @@ mod menu {
     fn main_menu_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         // Common style for all buttons on the screen
         let button_style = Style {
-            width: Val::Px(250.0),
-            height: Val::Px(65.0),
+            width: Val::Px(275.0),
+            height: Val::Px(90.0),
             margin: UiRect::all(Val::Px(20.0)),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
@@ -283,10 +282,7 @@ mod menu {
                             }),
                         );
 
-                        // Display three buttons for each action available from the main menu:
-                        // - new game
-                        // - settings
-                        // - quit
+                        // GAME BUTTONS
                         parent
                             .spawn((
                                 ButtonBundle {
@@ -304,7 +300,7 @@ mod menu {
                                     ..default()
                                 });
                                 parent.spawn(TextBundle::from_section(
-                                    "Game One",
+                                    "Catch the Crab",
                                     button_text_style.clone(),
                                 ));
                             });
@@ -325,7 +321,7 @@ mod menu {
                                     ..default()
                                 });
                                 parent.spawn(TextBundle::from_section(
-                                    "Game Two",
+                                    "Seafood Scramble",
                                     button_text_style.clone(),
                                 ));
                             });
@@ -366,6 +362,7 @@ mod menu {
                     MenuButtonAction::Quit => {
                         app_exit_events.send(AppExit);
                     }
+                    // ENTERS GAMES
                     MenuButtonAction::PlayOne => {
                         game_state.set(GameState::GameOne);
                         menu_state.set(MenuState::Disabled);
