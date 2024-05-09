@@ -13,6 +13,7 @@ enum GameState {
     GameOne,
     GameTwo,
     GameThree,
+    GameFour,
 }
 
 fn main() {
@@ -23,87 +24,19 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Update, bevy::window::close_on_esc)
         // Adds the plugins for each state
-        .add_plugins((
-            splash::splash_plugin, 
+        .add_plugins(( 
             menu::menu_plugin, 
             gameone::gameone_plugin, 
             gametwo::gametwo_plugin,
-            gamethree::gamethree_plugin, 
+            gamethree::gamethree_plugin,
+            gamefour::gamefour_plugin,
         ))
         .run();
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
     commands.spawn(Camera2dBundle::default());
-}
-
-mod splash {
-    use bevy::prelude::*;
-
-    use super::{despawn_screen, GameState};
-
-    // This plugin will display a splash screen with Bevy logo for 1 second before switching to the menu
-    pub fn splash_plugin(app: &mut App) {
-        // As this plugin is managing the splash screen, it will focus on the state `GameState::Splash`
-        app
-            // When entering the state, spawn everything needed for this screen
-            .add_systems(OnEnter(GameState::Splash), splash_setup)
-            // While in this state, run the `countdown` system
-            .add_systems(Update, countdown.run_if(in_state(GameState::Splash)))
-            // When exiting the state, despawn everything that was spawned for this screen
-            .add_systems(OnExit(GameState::Splash), despawn_screen::<OnSplashScreen>);
-    }
-
-    // Tag component used to tag entities added on the splash screen
-    #[derive(Component)]
-    struct OnSplashScreen;
-
-    // Newtype to use a `Timer` for this screen as a resource
-    #[derive(Resource, Deref, DerefMut)]
-    struct SplashTimer(Timer);
-
-    fn splash_setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-        let icon = asset_server.load("branding/icon.png");
-        // Display the logo
-        commands
-            .spawn((
-                NodeBundle {
-                    style: Style {
-                        align_items: AlignItems::Center,
-                        justify_content: JustifyContent::Center,
-                        width: Val::Percent(100.0),
-                        height: Val::Percent(100.0),
-                        ..default()
-                    },
-                    ..default()
-                },
-                OnSplashScreen,
-            ))
-            .with_children(|parent| {
-                parent.spawn(ImageBundle {
-                    style: Style {
-                        // This will set the logo to be 200px wide, and auto adjust its height
-                        width: Val::Px(200.0),
-                        ..default()
-                    },
-                    image: UiImage::new(icon),
-                    ..default()
-                });
-            });
-        // Insert the timer as a resource
-        commands.insert_resource(SplashTimer(Timer::from_seconds(1.0, TimerMode::Once)));
-    }
-
-    // Tick the timer, and change state when finished
-    fn countdown(
-        mut game_state: ResMut<NextState<GameState>>,
-        time: Res<Time>,
-        mut timer: ResMut<SplashTimer>,
-    ) {
-        if timer.tick(time.delta()).finished() {
-            game_state.set(GameState::Menu);
-        }
-    }
+    game_state.set(GameState::Menu);
 }
 
 // work here maybe?
@@ -147,7 +80,7 @@ mod gametwo {
 
     fn gametwo(mut game_state: ResMut<NextState<GameState>>) {
        Command::new("cargo").arg("run").arg("--bin").arg("gametwo").output().expect("unable to run game two");
-       game_state.set(GameState::Menu)
+       game_state.set(GameState::Menu);
     }
 }
 
@@ -169,6 +102,28 @@ mod gamethree {
 
     fn gameone(mut game_state: ResMut<NextState<GameState>>) {
        Command::new("cargo").arg("run").arg("--bin").arg("crabshooter").output().expect("unable to run game three");
+       game_state.set(GameState::Menu)
+    }
+}
+
+mod gamefour {
+    use bevy::prelude::*;
+    use std::process::Command;
+
+    use super::{despawn_screen, GameState};
+
+    // GAME FOUR PLUGIN
+    pub fn gamefour_plugin(app: &mut App) {
+        app.add_systems(OnEnter(GameState::GameFour), gameone)
+            .add_systems(OnExit(GameState::GameFour), despawn_screen::<OnGameScreen>);
+    }
+
+    // Tag component used to tag entities added on the game screen
+    #[derive(Component)]
+    struct OnGameScreen;
+
+    fn gameone(mut game_state: ResMut<NextState<GameState>>) {
+       Command::new("cargo").arg("run").arg("--bin").arg("autorunner").output().expect("unable to run game three");
        game_state.set(GameState::Menu)
     }
 }
@@ -224,6 +179,7 @@ mod menu {
         PlayOne,
         PlayTwo,
         PlayThree,
+        PlayFour,
         Quit,
     }
 
@@ -378,6 +334,27 @@ mod menu {
                                     button_text_style.clone(),
                                 ));
                             });
+                        parent
+                            .spawn((
+                                ButtonBundle {
+                                    style: button_style.clone(),
+                                    background_color: NORMAL_BUTTON.into(),
+                                    ..default()
+                                },
+                                MenuButtonAction::PlayFour,
+                            ))
+                            .with_children(|parent| {
+                                let icon = asset_server.load("textures/Game Icons/right.png");
+                                parent.spawn(ImageBundle {
+                                    style: button_icon_style.clone(),
+                                    image: UiImage::new(icon),
+                                    ..default()
+                                });
+                                parent.spawn(TextBundle::from_section(
+                                    "Crab Autorunner",
+                                    button_text_style.clone(),
+                                ));
+                            });
                         
                         parent
                             .spawn((
@@ -427,6 +404,10 @@ mod menu {
                     }
                     MenuButtonAction::PlayThree => {
                         game_state.set(GameState::GameThree);
+                        menu_state.set(MenuState::Disabled);
+                    }
+                    MenuButtonAction::PlayFour => {
+                        game_state.set(GameState::GameFour);
                         menu_state.set(MenuState::Disabled);
                     }
                 }
