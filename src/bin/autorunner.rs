@@ -87,8 +87,8 @@ impl ObstacleBundle {
     }
 }
 
-pub fn get_autorunner_game() {
-    return App::new()
+fn main() {
+    App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "Autorunner!".to_string(),
@@ -101,7 +101,7 @@ pub fn get_autorunner_game() {
         .add_plugins(RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(10.0)) // Physics plugin
         .add_plugins(RapierDebugRenderPlugin::default()) // Debug plugin
         .add_systems(Startup, setup)
-        .add_systems(Update, (controls, throw_rocks, score_handler, scoreboard_updater, death_handler, death_handler2))
+        .add_systems(Update, (bevy::window::close_on_esc, controls, throw_rocks, score_handler, scoreboard_updater, death_handler, death_handler2))
         .run();
 }
 
