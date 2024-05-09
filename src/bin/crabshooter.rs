@@ -1,3 +1,4 @@
+use bevy::window::close_on_esc;
 use bevy::{prelude::*};
 use bevy::utils::default;
 use rand::Rng;
@@ -10,7 +11,7 @@ fn main() {
         .add_systems(Startup,setup_game)
         .add_systems(Update, (move_player, shoot_projectile, move_projectiles, destroy_projectiles, kill_enemy,
                               hurt_player, kill_player, projectile_collision, enemy_projectile, move_enemy_projectiles,
-                              destroy_enemy_projectiles, spawn_enemy))
+                              destroy_enemy_projectiles, spawn_enemy, close_on_esc))
         .add_systems(Update, (update_health_text, update_score_text))
         .insert_resource(ProjectileTimer(Timer::from_seconds(0.5, TimerMode::Once)))
         .insert_resource(EnemyProjectileTimer(Timer::from_seconds(2.0, TimerMode::Once)))

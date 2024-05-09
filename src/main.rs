@@ -12,6 +12,7 @@ enum GameState {
     Menu,
     GameOne,
     GameTwo,
+    GameThree,
 }
 
 fn main() {
@@ -22,7 +23,13 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(Update, bevy::window::close_on_esc)
         // Adds the plugins for each state
-        .add_plugins((splash::splash_plugin, menu::menu_plugin, gameone::gameone_plugin, gametwo::gametwo_plugin))
+        .add_plugins((
+            splash::splash_plugin, 
+            menu::menu_plugin, 
+            gameone::gameone_plugin, 
+            gametwo::gametwo_plugin,
+            gamethree::gamethree_plugin, 
+        ))
         .run();
 }
 
@@ -116,8 +123,9 @@ mod gameone {
     #[derive(Component)]
     struct OnGameScreen;
 
-    fn gameone() {
+    fn gameone(mut game_state: ResMut<NextState<GameState>>) {
        Command::new("cargo").arg("run").arg("--bin").arg("gameone").output().expect("unable to run game one");
+       game_state.set(GameState::Menu)
     }
 }
 
@@ -137,8 +145,31 @@ mod gametwo {
     #[derive(Component)]
     struct OnGameScreen;
 
-    fn gametwo() {
-       Command::new("cargo").arg("run").arg("--bin").arg("gametwo").output().expect("unable to run game one");
+    fn gametwo(mut game_state: ResMut<NextState<GameState>>) {
+       Command::new("cargo").arg("run").arg("--bin").arg("gametwo").output().expect("unable to run game two");
+       game_state.set(GameState::Menu)
+    }
+}
+
+mod gamethree {
+    use bevy::prelude::*;
+    use std::process::Command;
+
+    use super::{despawn_screen, GameState};
+
+    // GAME THREE PLUGIN
+    pub fn gamethree_plugin(app: &mut App) {
+        app.add_systems(OnEnter(GameState::GameThree), gameone)
+            .add_systems(OnExit(GameState::GameThree), despawn_screen::<OnGameScreen>);
+    }
+
+    // Tag component used to tag entities added on the game screen
+    #[derive(Component)]
+    struct OnGameScreen;
+
+    fn gameone(mut game_state: ResMut<NextState<GameState>>) {
+       Command::new("cargo").arg("run").arg("--bin").arg("crabshooter").output().expect("unable to run game three");
+       game_state.set(GameState::Menu)
     }
 }
 
@@ -192,6 +223,7 @@ mod menu {
     enum MenuButtonAction {
         PlayOne,
         PlayTwo,
+        PlayThree,
         Quit,
     }
 
@@ -328,6 +360,28 @@ mod menu {
                         parent
                             .spawn((
                                 ButtonBundle {
+                                    style: button_style.clone(),
+                                    background_color: NORMAL_BUTTON.into(),
+                                    ..default()
+                                },
+                                MenuButtonAction::PlayThree,
+                            ))
+                            .with_children(|parent| {
+                                let icon = asset_server.load("textures/Game Icons/right.png");
+                                parent.spawn(ImageBundle {
+                                    style: button_icon_style.clone(),
+                                    image: UiImage::new(icon),
+                                    ..default()
+                                });
+                                parent.spawn(TextBundle::from_section(
+                                    "Crab Shooter",
+                                    button_text_style.clone(),
+                                ));
+                            });
+                        
+                        parent
+                            .spawn((
+                                ButtonBundle {
                                     style: button_style,
                                     background_color: NORMAL_BUTTON.into(),
                                     ..default()
@@ -369,6 +423,10 @@ mod menu {
                     }
                     MenuButtonAction::PlayTwo => {
                         game_state.set(GameState::GameTwo);
+                        menu_state.set(MenuState::Disabled);
+                    }
+                    MenuButtonAction::PlayThree => {
+                        game_state.set(GameState::GameThree);
                         menu_state.set(MenuState::Disabled);
                     }
                 }
